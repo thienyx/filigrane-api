@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -40,9 +40,11 @@ async def runtime_lifecycle(app_scope: FastAPI) -> AsyncIterator[None]:
     app_scope.state.notify_hub = NotifyHub()
     app_scope.state.limiter = traffic_guard
 
-    logging.getLogger(__name__).info(
+    structlog.get_logger(__name__).info(
         "filigrane_startup",
+        env=runtime_snapshot.env,
         database=bool(database_pointer),
+        openapi=runtime_snapshot.openapi_enabled,
     )
 
     yield
