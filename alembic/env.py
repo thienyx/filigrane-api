@@ -19,17 +19,18 @@ target_metadata = Base.metadata
 
 
 def _sync_database_url(raw: str) -> str:
-    if raw.startswith("postgresql+asyncpg://"):
-        return raw.replace(
-            "postgresql+asyncpg://", "postgresql+psycopg://", maxsplit=1
-        )
-    if raw.startswith("postgres://"):
-        return raw.replace("postgres://", "postgresql+psycopg://", maxsplit=1)
-    if raw.startswith("postgresql://"):
-        return raw.replace("postgresql://", "postgresql+psycopg://", maxsplit=1)
-    if raw.startswith("postgresql+psycopg://"):
-        return raw
-    return raw
+    # Strip query string before driver swap; re-attach after.
+    base, _, query = raw.partition("?")
+    suffix = f"?{query}" if query else ""
+    if base.startswith("postgresql+asyncpg://"):
+        base = base.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+    elif base.startswith("postgres://"):
+        base = base.replace("postgres://", "postgresql+psycopg://", 1)
+    elif base.startswith("postgresql://"):
+        base = base.replace("postgresql://", "postgresql+psycopg://", 1)
+    if "sslmode" not in suffix and "sslmode" not in raw:
+        return base + suffix
+    return base + suffix.replace("ssl=require", "sslmode=require")
 
 
 def _configure_url_from_env() -> None:
