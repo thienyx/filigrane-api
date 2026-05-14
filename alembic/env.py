@@ -3,15 +3,13 @@ from __future__ import annotations
 import os
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection
 
-from alembic import context
-
-from filigrane_api.models.base import Base
-
 import filigrane_api.models.auth_tokens  # noqa: F401
 import filigrane_api.models.entities  # noqa: F401
+from filigrane_api.models.base import Base
 
 config = context.config
 if config.config_file_name:
@@ -25,11 +23,13 @@ def _sync_database_url(raw: str) -> str:
         return raw.replace(
             "postgresql+asyncpg://", "postgresql+psycopg://", maxsplit=1
         )
+    if raw.startswith("postgres://"):
+        return raw.replace("postgres://", "postgresql+psycopg://", maxsplit=1)
     if raw.startswith("postgresql://"):
-        return raw.replace(
-            "postgresql://", "postgresql+psycopg://", maxsplit=1
-        )
-    return raw.replace("postgresql+psycopg://", "postgresql+psycopg://")
+        return raw.replace("postgresql://", "postgresql+psycopg://", maxsplit=1)
+    if raw.startswith("postgresql+psycopg://"):
+        return raw
+    return raw
 
 
 def _configure_url_from_env() -> None:

@@ -4,7 +4,7 @@ import os
 from functools import lru_cache
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,24 @@ class FiligraneSettings(BaseSettings):
     magic_link_ttl_minutes: int = 15
 
     openapi_enabled: bool = False
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_async_database_url(cls, value: str | None) -> str | None:
+        if value is None or not isinstance(value, str):
+            return value
+        trimmed = value.strip()
+        if not trimmed:
+            return None
+        if trimmed.startswith("postgresql+asyncpg://"):
+            return trimmed
+        if trimmed.startswith("postgres://"):
+            return trimmed.replace("postgres://", "postgresql+asyncpg://", 1)
+        if trimmed.startswith("postgresql://"):
+            return trimmed.replace(
+                "postgresql://", "postgresql+asyncpg://", 1
+            )
+        return trimmed
 
     @model_validator(mode="after")
     def apply_development_defaults(self) -> Self:
