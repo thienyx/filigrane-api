@@ -1,0 +1,51 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+import httpx
+
+from filigrane_api.core.logging_config import get_logger
+
+
+class EmailSender(Protocol):
+    async def send_magic_link(self, *, to_email: str, link: str) -> None: ...
+
+
+class ConsoleEmailSender:
+    def __init__(self) -> None:
+        self._log = get_logger(component="email")
+
+    async def send_magic_link(self, *, to_email: str, link: str) -> None:
+        self._log.info("magic_link", to=to_email, link=link)
+
+
+class ResendEmailSender:
+    def __init__(self, api_key: str, from_address: str) -> None:
+        self._api_key = api_key
+        self._from = from_address
+        self._log = get_logger(component="email")
+
+    async def send_magic_link(self, *, to_email: str, link: str) -> None:
+        payload = {
+            "from": self._from,
+            "to": [to_email],
+            "subject": "Your Filigrane sign-in link",
+            "html": f'<p>Click <a href="{link}">here</a> to continue.</p>',
+        }
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        async with httpx.AsyncClient(timeout=httpx.Timeout(12.0)) as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+
+
+def build_email_sender(*, api_key: str | None, from_address: str) -> EmailSender:
+    if api_key:
+        return ResendEmailSender(api_key=api_key, from_address=from_address)
+    return ConsoleEmailSender()
