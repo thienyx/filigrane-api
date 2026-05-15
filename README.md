@@ -40,6 +40,8 @@ cp .env.example .env
 | `FILIGRANE_ENV` | non | `development` par défaut |
 | `FILIGRANE_LOG_LEVEL` | non | Niveau de log (`info`, `debug`, …) |
 | `FILIGRANE_DATABASE_URL` | pour DB / Alembic | URL async Postgres, ex. `postgresql+asyncpg://…` |
+| `DATABASE_URL` | secours Railway | Si défini sans `FILIGRANE_DATABASE_URL`, l’app et Alembic l’utilisent (converti en `+asyncpg` côté API) |
+| `SKIP_DB_MIGRATIONS` | Docker uniquement | `1` ou `true` : ne pas lancer `alembic upgrade head` au démarrage du conteneur |
 | `FILIGRANE_ADMIN_TOKEN` | schéma interne `/internal/schema` | Bearer ou `x-admin-token` |
 | `FILIGRANE_CORS_ORIGINS` | non | CSV d’origines web (`https://…`) |
 | `FILIGRANE_CHROME_EXTENSION_IDS` | non | IDs d’extensions (comma), origin `chrome-extension://…` |
@@ -121,6 +123,8 @@ CI GitHub Actions (si présente) : lint + tests sur push / PR vers `main` ou `ma
 
 Les migrations tournent en **sync** avec **psycopg** ; l’API en runtime peut rester en **asyncpg**. Convertir l’URL si besoin : `postgresql+asyncpg://…` vers `postgresql+psycopg://…` pour la CLI Alembic (souvent géré dans `alembic/env.py`).
 
+**Déploiement Docker (Railway)** : au démarrage du conteneur, `docker-entrypoint.sh` exécute `alembic upgrade head`, puis lance uvicorn. Il suffit donc de pousser une migration dans le dépôt et de redéployer. Variables acceptées : **`FILIGRANE_DATABASE_URL`** ou **`DATABASE_URL`** (référence Railway vers Postgres). Pour désactiver les migrations au boot : **`SKIP_DB_MIGRATIONS=1`**.
+
 ```bash
 export FILIGRANE_DATABASE_URL=postgresql+asyncpg://…
 alembic upgrade head
@@ -141,6 +145,15 @@ docker run --rm -p 8000:8000 -e PORT=8000 filigrane-api
 
 Le `PYTHONPATH` doit inclure `src` pour que `filigrane_api` soit importable.
 
+Exemple avec Postgres local et migrations :
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e PORT=8000 \
+  -e DATABASE_URL=postgresql://user:pass@host.docker.internal:5432/filigrane \
+  filigrane-api
+```
+
 ---
 
 ## Structure du code (cible)
@@ -153,6 +166,7 @@ filigrane-api/
 ├── alembic.ini
 ├── pyproject.toml
 ├── Dockerfile             # optionnel
+├── docker-entrypoint.sh   # migrations puis uvicorn (production Docker)
 └── .env.example
 ```
 

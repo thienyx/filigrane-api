@@ -52,6 +52,15 @@ class FiligraneSettings(BaseSettings):
         return trimmed
 
     @model_validator(mode="after")
+    def fill_database_url_from_platform_reference(self) -> Self:
+        if self.database_url is None:
+            railway = os.environ.get("DATABASE_URL", "").strip()
+            if railway:
+                normalized = type(self).normalize_async_database_url(railway)
+                self.database_url = normalized
+        return self
+
+    @model_validator(mode="after")
     def apply_development_defaults(self) -> Self:
         if self.env == "development":
             if "FILIGRANE_SESSION_COOKIE_SECURE" not in os.environ:

@@ -35,9 +35,14 @@ def _sync_database_url(raw: str) -> str:
 
 
 def _configure_url_from_env() -> None:
-    raw = os.environ.get("FILIGRANE_DATABASE_URL")
-    if raw is None:
-        msg = "FILIGRANE_DATABASE_URL is required for Alembic migrations"
+    raw = os.environ.get("FILIGRANE_DATABASE_URL") or os.environ.get(
+        "DATABASE_URL",
+    )
+    if raw is None or not raw.strip():
+        msg = (
+            "FILIGRANE_DATABASE_URL or DATABASE_URL is required for Alembic "
+            "migrations"
+        )
         raise RuntimeError(msg)
     sync_url = _sync_database_url(raw)
     config.set_main_option("sqlalchemy.url", sync_url)
