@@ -48,9 +48,7 @@ class FiligraneSettings(BaseSettings):
         if trimmed.startswith("postgres://"):
             return trimmed.replace("postgres://", "postgresql+asyncpg://", 1)
         if trimmed.startswith("postgresql://"):
-            return trimmed.replace(
-                "postgresql://", "postgresql+asyncpg://", 1
-            )
+            return trimmed.replace("postgresql://", "postgresql+asyncpg://", 1)
         return trimmed
 
     @model_validator(mode="after")
@@ -72,11 +70,7 @@ class FiligraneSettings(BaseSettings):
 
     def chrome_extension_origins(self) -> list[str]:
         chrome_ids = _split_csv(self.chrome_extension_ids)
-        return [
-            f"chrome-extension://{ext_id}"
-            for ext_id in chrome_ids
-            if ext_id
-        ]
+        return [f"chrome-extension://{ext_id}" for ext_id in chrome_ids if ext_id]
 
 
 def _split_csv(raw: str) -> list[str]:

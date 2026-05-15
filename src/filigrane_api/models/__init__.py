@@ -11,12 +11,14 @@ from filigrane_api.models.entities import (
     User,
 )
 from filigrane_api.models.enums import NotificationKind, ReactionTarget, SourceKind
+from filigrane_api.models.magic_allowlist import MagicLoginAllowlist
 
 __all__ = [
     "Base",
     "Comment",
     "Follow",
     "MagicLink",
+    "MagicLoginAllowlist",
     "Notification",
     "NotificationKind",
     "Pin",

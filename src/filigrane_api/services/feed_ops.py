@@ -102,4 +102,3 @@ async def last_comments_overview(session: AsyncSession, pin_pk: int) -> list[dic
             },
         )
     return synopsis
-

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator
-from typing import Annotated
 
 from fastapi import (
     APIRouter,
@@ -144,7 +143,7 @@ async def resolve_surface_for_viewer(
     persona: PersonaWire,
     jobs: BackgroundTasks,
     factory: FactoryWire,
-    if_none_match: Annotated[str | None, Header(alias="If-None-Match")] = None,
+    if_none_match: str | None = Header(default=None, alias="If-None-Match"),
 ) -> Response:
     body, tag = await hydrate_extension_surface(
         session_bundle,
@@ -200,9 +199,7 @@ async def anchor_new_pin(
             detail="source_missing",
         ) from None
 
-    status_code = (
-        status.HTTP_201_CREATED if spawned else status.HTTP_200_OK
-    )
+    status_code = status.HTTP_201_CREATED if spawned else status.HTTP_200_OK
 
     return JSONResponse(
         status_code=status_code,
@@ -291,7 +288,7 @@ async def social_feed_wall(
     persona: PersonaWire,
     cursor_token: str | None = Query(default=None, alias="cursor"),
     limit: int = Query(default=20, ge=1, le=100),
-    if_none_match: Annotated[str | None, Header(alias="If-None-Match")] = None,
+    if_none_match: str | None = Header(default=None, alias="If-None-Match"),
 ) -> Response:
     navigator = decode_feed_cursor(cursor_token) if cursor_token else None
     hydrate, onward = await collect_feed_pins(
@@ -561,5 +558,3 @@ async def live_notification_fanout(
             teardown()
 
     return StreamingResponse(broadcaster(), media_type="text/event-stream")
-
-

@@ -9,6 +9,7 @@ from sqlalchemy.engine import Connection
 
 import filigrane_api.models.auth_tokens  # noqa: F401
 import filigrane_api.models.entities  # noqa: F401
+import filigrane_api.models.magic_allowlist  # noqa: F401
 from filigrane_api.models.base import Base
 
 config = context.config

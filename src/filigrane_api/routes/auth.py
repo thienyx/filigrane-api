@@ -112,4 +112,3 @@ async def terminate_session_route(
     )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-

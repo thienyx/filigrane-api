@@ -132,4 +132,3 @@ def summarize_feed_digest(rows: list[tuple[Pin, Source, User]]) -> str:
     ]
     canonical = {"items": snapshots}
     return fingerprint_surface(canonical)
-

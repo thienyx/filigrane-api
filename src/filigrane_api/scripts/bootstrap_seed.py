@@ -55,6 +55,14 @@ def main() -> None:
                 """,
                 (handle_slug, mailbox, label),
             )
+            conn.execute(
+                """
+                INSERT INTO magic_login_allowlist (email)
+                VALUES (%s)
+                ON CONFLICT (email) DO NOTHING;
+                """,
+                (mailbox,),
+            )
 
         pivot_rows = conn.execute(
             f"SELECT id, handle FROM users WHERE handle IN ({placeholders});",

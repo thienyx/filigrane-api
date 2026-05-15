@@ -17,7 +17,7 @@ from filigrane_api.core.logging_config import configure_logging
 from filigrane_api.core.notify_hub import NotifyHub
 from filigrane_api.deps import verify_console_gate
 from filigrane_api.middleware.request_id import RequestIdMiddleware
-from filigrane_api.routes import auth, health, workspace
+from filigrane_api.routes import auth, health, internal_access, workspace
 from filigrane_api.traffic import traffic_guard
 
 
@@ -95,6 +95,7 @@ def build_application() -> FastAPI:
     api_gateway.include_router(health.router)
     api_gateway.include_router(auth.router, prefix="/v1")
     api_gateway.include_router(workspace.router, prefix="/v1")
+    api_gateway.include_router(internal_access.router)
 
     @api_gateway.get(
         "/internal/schema",

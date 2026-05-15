@@ -125,9 +125,6 @@ def verify_console_gate(
             detail="admin_disabled",
         )
     provided = bearer_packet.credentials if bearer_packet else None
-    forwarded = (
-        provided
-        or request.headers.get("x-admin-token")
-    )
+    forwarded = provided or request.headers.get("x-admin-token")
     if forwarded != runtime.admin_token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="admin_only")

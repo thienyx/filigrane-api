@@ -18,8 +18,12 @@ class MagicRequest(BaseModel):
     email: EmailStr
 
 
+class MagicAllowlistMutation(BaseModel):
+    email: EmailStr
+
+
 class MagicConsume(BaseModel):
-    token: str
+    token: str = Field(..., min_length=24)
 
 
 class LoginEnvelope(BaseModel):
@@ -91,4 +95,3 @@ class ReactionWrite(BaseModel):
 class NotificationsRead(BaseModel):
     ids: list[int] | None = None
     all: bool = False
-

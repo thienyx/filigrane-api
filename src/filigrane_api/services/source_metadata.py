@@ -36,9 +36,8 @@ def extract_open_graph(html: str) -> dict[str, Any]:
     twitter_desc = _meta_content(tree, "name", "twitter:description")
     if twitter_desc and not data.get("description"):
         data["description"] = twitter_desc
-    pub = (
-        _meta_content(tree, "property", "article:published_time")
-        or _meta_content(tree, "name", "pubdate")
+    pub = _meta_content(tree, "property", "article:published_time") or _meta_content(
+        tree, "name", "pubdate"
     )
     parsed_date = _parse_iso(pub)
     if parsed_date:

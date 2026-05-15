@@ -53,4 +53,3 @@ async def publish_many(
 ) -> None:
     unique_ids = sorted({uid for uid in user_ids})
     await asyncio.gather(*(hub.publish(uid, envelope) for uid in unique_ids))
-

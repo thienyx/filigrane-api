@@ -8,15 +8,32 @@ from filigrane_api.core.logging_config import get_logger
 
 
 class EmailSender(Protocol):
-    async def send_magic_link(self, *, to_email: str, link: str) -> None: ...
+    async def send_magic_link(
+        self,
+        *,
+        to_email: str,
+        link: str,
+        ttl_minutes: int,
+    ) -> None: ...
 
 
 class ConsoleEmailSender:
     def __init__(self) -> None:
         self._log = get_logger(component="email")
 
-    async def send_magic_link(self, *, to_email: str, link: str) -> None:
-        self._log.info("magic_link", to=to_email, link=link)
+    async def send_magic_link(
+        self,
+        *,
+        to_email: str,
+        link: str,
+        ttl_minutes: int,
+    ) -> None:
+        self._log.info(
+            "magic_link",
+            to=to_email,
+            link=link,
+            ttl_minutes=ttl_minutes,
+        )
 
 
 class ResendEmailSender:
@@ -25,12 +42,37 @@ class ResendEmailSender:
         self._from = from_address
         self._log = get_logger(component="email")
 
-    async def send_magic_link(self, *, to_email: str, link: str) -> None:
+    async def send_magic_link(
+        self,
+        *,
+        to_email: str,
+        link: str,
+        ttl_minutes: int,
+    ) -> None:
+        subject = "Filigrane sign-in link"
+        minutes_note = (
+            f"{ttl_minutes} minute" if ttl_minutes == 1 else f"{ttl_minutes} minutes"
+        )
+        html_body = (
+            "<!DOCTYPE html><html><body>"
+            "<p>Use this link to sign in to Filigrane. "
+            f"If you did not request it, you can ignore this email.</p>"
+            f'<p><a href="{link}">Continue</a></p>'
+            f"<p>This link expires in {minutes_note}.</p>"
+            "</body></html>"
+        )
+        text_body = (
+            "Sign in to Filigrane (requested by you or someone with "
+            "access to this address).\n\n"
+            f"{link}\n\n"
+            f"This link expires in {minutes_note}.\n"
+        )
         payload = {
             "from": self._from,
             "to": [to_email],
-            "subject": "Your Filigrane sign-in link",
-            "html": f'<p>Click <a href="{link}">here</a> to continue.</p>',
+            "subject": subject,
+            "html": html_body,
+            "text": text_body,
         }
         headers = {
             "Authorization": f"Bearer {self._api_key}",

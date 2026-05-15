@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +9,9 @@ from filigrane_api.core.config import FiligraneSettings
 from filigrane_api.core.security import hash_secret, mint_opaque_token
 from filigrane_api.models.auth_tokens import MagicLink, SessionToken
 from filigrane_api.models.entities import User
+from filigrane_api.services import magic_allowlist_ops as allowlist_svc
 from filigrane_api.services.email_dispatch import EmailSender
+from filigrane_api.services.email_identity import normalize_email
 from filigrane_api.utils.time import utcnow
 
 
@@ -20,17 +21,6 @@ class AuthFlowError(RuntimeError):
 
 class InvalidMagicTokenError(AuthFlowError):
     pass
-
-
-def normalize_email(candidate: str) -> str | None:
-    trimmed = candidate.strip().lower()
-    if not trimmed:
-        return None
-    try:
-        parsed = validate_email(trimmed, check_deliverability=False)
-        return parsed.email.lower()
-    except EmailNotValidError:
-        return None
 
 
 async def start_magic_challenge(
@@ -50,6 +40,16 @@ async def start_magic_challenge(
     if profile is None:
         return
 
+    if not await allowlist_svc.is_allowed(session, mailbox=mailbox):
+        return
+
+    await session.execute(
+        delete(MagicLink).where(
+            MagicLink.email == mailbox,
+            MagicLink.consumed_at.is_(None),
+        ),
+    )
+
     secret_fragment = mint_opaque_token(32)
     digest = hash_secret(secret_fragment)
     deadline = utcnow() + timedelta(minutes=configuration.magic_link_ttl_minutes)
@@ -65,7 +65,11 @@ async def start_magic_challenge(
 
     landing = configuration.public_app_url.rstrip("/")
     redirect = f"{landing}/magic?token={secret_fragment}"
-    await sender.send_magic_link(to_email=mailbox, link=redirect)
+    await sender.send_magic_link(
+        to_email=mailbox,
+        link=redirect,
+        ttl_minutes=configuration.magic_link_ttl_minutes,
+    )
 
 
 async def redeem_magic_challenge(
@@ -93,6 +97,9 @@ async def redeem_magic_challenge(
     holder = await session.scalar(select(User).where(User.email == invitation.email))
     if holder is None:
         raise InvalidMagicTokenError("user_missing")
+
+    if not await allowlist_svc.is_allowed(session, mailbox=invitation.email):
+        raise InvalidMagicTokenError("magic_login_revoked")
 
     invitation.consumed_at = utcnow()
 
