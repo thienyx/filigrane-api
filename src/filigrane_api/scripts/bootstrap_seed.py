@@ -8,15 +8,17 @@ import psycopg
 
 
 def sync_url(raw: str) -> str:
-    if raw.startswith("postgresql+asyncpg://"):
-        return raw.replace(
-            "postgresql+asyncpg://",
-            "postgresql+psycopg://",
-            maxsplit=1,
-        )
-    if raw.startswith("postgresql://"):
-        return raw.replace("postgresql://", "postgresql+psycopg://", maxsplit=1)
-    return raw
+    base, _, query = raw.partition("?")
+    suffix = f"?{query}" if query else ""
+    if base.startswith("postgresql+asyncpg://"):
+        base = base.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+    elif base.startswith("postgres://"):
+        base = base.replace("postgres://", "postgresql+psycopg://", 1)
+    elif base.startswith("postgresql://"):
+        base = base.replace("postgresql://", "postgresql+psycopg://", 1)
+    suffix = suffix.replace("ssl=require", "sslmode=require")
+    synced = base + suffix
+    return synced.replace("postgresql+psycopg://", "postgresql://", 1)
 
 
 def main() -> None:
@@ -26,6 +28,7 @@ def main() -> None:
         raise SystemExit(1)
 
     roster = (
+        ("thieny", "Thieny", "thienyx@gmail.com"),
         ("river", "River", "river@filigrane.team"),
         ("noor", "Noor", "noor@filigrane.team"),
         ("kai", "Kai", "kai@filigrane.team"),

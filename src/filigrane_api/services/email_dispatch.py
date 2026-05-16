@@ -28,11 +28,12 @@ class ConsoleEmailSender:
         link: str,
         ttl_minutes: int,
     ) -> None:
-        self._log.info(
-            "magic_link",
+        self._log.warning(
+            "magic_link_console_only",
             to=to_email,
             link=link,
             ttl_minutes=ttl_minutes,
+            hint="FILIGRANE_RESEND_API_KEY not set — no email actually sent",
         )
 
 

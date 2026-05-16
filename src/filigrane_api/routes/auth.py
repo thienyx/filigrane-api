@@ -23,6 +23,12 @@ from filigrane_api.traffic import traffic_guard
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
+_MAGIC_REJECT_HTTP = {
+    "invalid_email": status.HTTP_422_UNPROCESSABLE_ENTITY,
+    "user_not_found": status.HTTP_404_NOT_FOUND,
+    "not_allowlisted": status.HTTP_403_FORBIDDEN,
+}
+
 
 @router.post("/magic-link/request", status_code=status.HTTP_202_ACCEPTED)
 @traffic_guard.limit("25/hour")
@@ -37,14 +43,35 @@ async def solicit_magic_delivery(
         from_address=runtime.email_from,
     )
 
-    await auth_flow_svc.start_magic_challenge(
-        session_bundle,
-        configuration=runtime,
-        sender=courier,
-        inbound_email=packet.email,
-        invite_ip=request.client.host if request.client else None,
-        invite_agent=request.headers.get("user-agent"),
-    )
+    try:
+        await auth_flow_svc.start_magic_challenge(
+            session_bundle,
+            configuration=runtime,
+            sender=courier,
+            inbound_email=packet.email,
+            invite_ip=request.client.host if request.client else None,
+            invite_agent=request.headers.get("user-agent"),
+        )
+    except auth_flow_svc.MagicRequestRejectedError as exc:
+        status_code = _MAGIC_REJECT_HTTP.get(
+            exc.code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "code": exc.code,
+                "message": exc.public_message,
+            },
+        ) from None
+    except auth_flow_svc.MagicEmailDeliveryError as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "code": "email_delivery_failed",
+                "message": exc.public_message,
+            },
+        ) from None
 
     return Response(status_code=status.HTTP_202_ACCEPTED)
 
@@ -64,10 +91,13 @@ async def finish_magic_delivery(
             plaintext_token=packet.token,
             client_agent=ingress.headers.get("user-agent"),
         )
-    except auth_flow_svc.InvalidMagicTokenError:
+    except auth_flow_svc.InvalidMagicTokenError as exc:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
-            detail="magic_link_invalid",
+            detail={
+                "code": exc.code,
+                "message": exc.public_message,
+            },
         ) from None
 
     cookie_key = runtime.session_cookie_name()

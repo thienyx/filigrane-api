@@ -29,9 +29,8 @@ def _sync_database_url(raw: str) -> str:
         base = base.replace("postgres://", "postgresql+psycopg://", 1)
     elif base.startswith("postgresql://"):
         base = base.replace("postgresql://", "postgresql+psycopg://", 1)
-    if "sslmode" not in suffix and "sslmode" not in raw:
-        return base + suffix
-    return base + suffix.replace("ssl=require", "sslmode=require")
+    suffix = suffix.replace("ssl=require", "sslmode=require")
+    return base + suffix
 
 
 def _configure_url_from_env() -> None:

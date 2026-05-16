@@ -45,7 +45,7 @@ cp .env.example .env
 | `FILIGRANE_ADMIN_TOKEN` | schéma interne `/internal/schema` | Bearer ou `x-admin-token` |
 | `FILIGRANE_CORS_ORIGINS` | non | CSV d’origines web (`https://…`) |
 | `FILIGRANE_CHROME_EXTENSION_IDS` | non | IDs d’extensions (comma), origin `chrome-extension://…` |
-| `FILIGRANE_PUBLIC_APP_URL` | magick link redirect | Origin du front (page `/magic`) |
+| `FILIGRANE_PUBLIC_APP_URL` | magic link redirect | Origin du front (page `/magic`) |
 | `FILIGRANE_EMAIL_FROM`, `FILIGRANE_RESEND_API_KEY` | envoi mail prod | Vide = emails loggés en console |
 | `FILIGRANE_OPENAPI_ENABLED` | non | `development` défaut oui hors env explicite |
 
@@ -89,6 +89,26 @@ PY
 ```
 
 Les corps HTML restent **minimaux** pour l’instant (un lien pour le magic link). Des **templates** plus soignés (sujets, layout, i18n) pourront remplacer ces chaînes plus tard, sans changer le transport Resend.
+
+### Magic link : réponses HTTP
+
+Endpoints (préfixe **`/v1`** comme le reste de l’API) :
+
+- `POST /auth/magic-link/request` : en cas de succès, statut **202** sans corps utile.
+- `POST /auth/magic-link/consume` : en cas de succès, **200** avec l’enveloppe de session.
+
+En erreur métier (hors validation Pydantic du corps), FastAPI renvoie un objet dans **`detail`** avec au minimum **`code`** (identifiant stable) et **`message`** (texte explicite pour l’utilisateur ou le support). Exemple : `{"detail":{"code":"not_allowlisted","message":"…"}}`.
+
+| Statut | `code` (request) | Cause typique |
+|--------|------------------|---------------|
+| 422 | `invalid_email` | Adresse rejetée après normalisation |
+| 404 | `user_not_found` | Aucune ligne `users` pour cet email |
+| 403 | `not_allowlisted` | Email absent de `magic_login_allowlist` |
+| 502 | `email_delivery_failed` | Resend indisponible, clé, ou domaine expéditeur non conforme |
+
+Sur **`/auth/magic-link/consume`** (401), les codes incluent notamment `magic_link_invalid`, `user_missing`, `magic_login_revoked`.
+
+Les erreurs de **validation** du JSON (champ `email` mal formé avant la logique métier) restent au format FastAPI habituel (`detail` en liste d’erreurs Pydantic).
 
 ### 4. Lancer le serveur
 
@@ -196,6 +216,9 @@ Le détail fonctionnel (entités, endpoints `/v1`, perf, MCP, canonicalisation d
 | `ModuleNotFoundError: filigrane_api` | `export PYTHONPATH=src` ou réinstaller avec `pip install -e .` depuis la racine |
 | Alembic ne trouve pas la DB | `FILIGRANE_DATABASE_URL` défini dans l’environnement du shell qui lance `alembic` |
 | Port déjà pris | `uvicorn … --port 8001` ou variable `PORT` sur l’hôte |
+| Magic link : **403** `not_allowlisted` | Ajouter l’email à `magic_login_allowlist` (migration, `bootstrap_seed`, ou `POST /internal/magic-login-allowlist` avec la garde admin habituelle) |
+| Magic link : **404** `user_not_found` | Créer l’utilisateur en base pour cet email avant la demande de lien |
+| Magic link : **502** `email_delivery_failed` | Vérifier `FILIGRANE_RESEND_API_KEY`, `FILIGRANE_EMAIL_FROM` (domaine vérifié chez Resend) ; en local sans clé, le lien est seulement loggé (pas d’email réel) |
 
 ---
 

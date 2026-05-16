@@ -34,6 +34,7 @@ class FiligraneSettings(BaseSettings):
     magic_link_ttl_minutes: int = 15
 
     openapi_enabled: bool = False
+    auto_provision_users: bool = False
 
     @field_validator("database_url", mode="before")
     @classmethod
